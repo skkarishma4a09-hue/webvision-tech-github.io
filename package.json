@@ -10,7 +10,7 @@
     "seed": "npm run seed:jobs && npm run seed:marketplace",
     "seed:jobs": "tsx server/seed.ts",
     "seed:marketplace": "tsx server/seedMarketplace.ts",
-    "build": "tsc && vite build",
+    "build": "npx tsc && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
