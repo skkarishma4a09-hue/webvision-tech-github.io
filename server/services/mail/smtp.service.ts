@@ -42,6 +42,10 @@ function createTransporter() {
     connectionTimeout: 10_000,
     greetingTimeout: 8_000,
     socketTimeout: 15_000,
+    // In development, allow self‑signed certificates; in production we require valid TLS.
+    tls: {
+      rejectUnauthorized: process.env.NODE_ENV === 'production',
+    },
   });
 }
 

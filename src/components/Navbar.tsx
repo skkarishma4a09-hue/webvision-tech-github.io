@@ -218,7 +218,7 @@ export default function Navbar() {
               <div style={{ position:'relative' }}>
                 <button onClick={()=>setProfDD(!profDD)} style={{ display:'flex', alignItems:'center', gap:8, padding:'5px 8px', borderRadius:10, background:'var(--bg-glass)', border:'1px solid var(--border)', cursor:'pointer', transition:'all .2s' }}>
                   <div style={{ width:28, height:28, borderRadius:'50%', background:'var(--grad)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, color:'white', flexShrink:0 }}>{user.initials}</div>
-                  <span className="nav-desktop" style={{ fontSize:13, fontWeight:500 }}>{user.name.split(' ')[0]}</span>
+                  <span className="nav-desktop" style={{ fontSize:13, fontWeight:500 }}>{(user.name?.split(' ')[0] || user.email?.split('@')[0] || '')}</span>
                   <ChevronDown size={12} color="var(--text-3)"/>
                 </button>
                 {profDD && (
