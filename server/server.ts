@@ -55,7 +55,7 @@ app.use(errorHandler);
 
 const PORT = parseInt(env.PORT, 10) || 5000;
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
     console.log(`🚀 Synapse Phase 2 Server running at http://localhost:${PORT}`);
   });

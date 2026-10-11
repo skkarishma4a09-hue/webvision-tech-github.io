@@ -3,11 +3,24 @@ import path from 'path';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+
+function secret(name: string, developmentFallback: string): string {
+  const value = process.env[name];
+  if (value) return value;
+  if (isProduction) {
+    throw new Error(`${name} must be configured in production.`);
+  }
+  return developmentFallback;
+}
+
 export const env = {
   PORT: process.env.PORT || '5000',
   NODE_ENV: process.env.NODE_ENV || 'development',
-  JWT_SECRET: process.env.JWT_SECRET || 'synapse_job_portal_super_secret_jwt_key_2026!',
-  DATABASE_PATH: process.env.DATABASE_PATH || './data/database.sqlite',
+  JWT_SECRET: secret('JWT_SECRET', 'synapse_job_portal_super_secret_jwt_key_2026!'),
+  DATABASE_PATH:
+    process.env.DATABASE_PATH ||
+    (process.env.VERCEL === '1' ? '/tmp/database.sqlite' : './data/database.sqlite'),
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
 
   // SMTP – SERVER-ONLY secrets, never sent to frontend
@@ -27,10 +40,10 @@ export const env = {
 
   // Admin SMTP test recipient
   ADMIN_SMTP_TEST_EMAIL: process.env.ADMIN_SMTP_TEST_EMAIL || '',
-  ADMIN_API_KEY: process.env.ADMIN_API_KEY || 'change_this_admin_key_in_production',
+  ADMIN_API_KEY: secret('ADMIN_API_KEY', 'change_this_admin_key_in_production'),
 
   // Auth session
-  AUTH_SESSION_SECRET: process.env.AUTH_SESSION_SECRET || 'synapse_session_secret_2026!',
+  AUTH_SESSION_SECRET: secret('AUTH_SESSION_SECRET', 'synapse_session_secret_2026!'),
 
   // AI Studio provider configuration (server-side only)
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',

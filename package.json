@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
-    "server": "tsx server/server.ts",
+    "server": "prisma generate --schema prisma/schema.prisma && tsx server/server.ts",
     "seed": "npm run seed:jobs && npm run seed:marketplace",
-    "seed:jobs": "tsx server/seed.ts",
-    "seed:marketplace": "tsx server/seedMarketplace.ts",
-    "build": "npx tsc && vite build",
+    "seed:jobs": "prisma generate --schema prisma/schema.prisma && tsx server/seed.ts",
+    "seed:marketplace": "prisma generate --schema prisma/schema.prisma && tsx server/seedMarketplace.ts",
+    "postinstall": "prisma generate",
+    "build": "prisma generate --schema prisma/schema.postgres.prisma && npx tsc && vite build",
+    "db:push:postgres": "prisma db push --schema prisma/schema.postgres.prisma",
     "preview": "vite preview"
   },
   "dependencies": {

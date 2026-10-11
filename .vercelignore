@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.git
+.vercel
+node_modules
+dist
+data
+scratch
+servererr*.txt
+serverlog*.txt
