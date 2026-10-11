@@ -32,12 +32,6 @@ export const env = {
   SMTP_FROM: process.env.SMTP_FROM || '',
   SMTP_FROM_NAME: process.env.SMTP_FROM_NAME || 'Project Content AI Marketplace',
 
-  // OTP security settings (configurable via env)
-  OTP_EXPIRY_SECONDS: parseInt(process.env.OTP_EXPIRY_SECONDS || '300', 10),         // 5 min default
-  OTP_RESEND_COOLDOWN_SECONDS: parseInt(process.env.OTP_RESEND_COOLDOWN_SECONDS || '60', 10), // 60 s
-  OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10),               // 5 max tries
-  OTP_MAX_REQUESTS_PER_HOUR: parseInt(process.env.OTP_MAX_REQUESTS_PER_HOUR || '10', 10),
-
   // Admin SMTP test recipient
   ADMIN_SMTP_TEST_EMAIL: process.env.ADMIN_SMTP_TEST_EMAIL || '',
   ADMIN_API_KEY: secret('ADMIN_API_KEY', 'change_this_admin_key_in_production'),

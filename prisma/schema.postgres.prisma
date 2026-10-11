@@ -11,7 +11,7 @@ generator client {
 model User {
   id                  String    @id @default(uuid())
   email               String    @unique
-  password            String? // Optional – OTP-only auth doesn't require a password
+  password            String? // Nullable for compatibility with accounts created before password auth.
   name                String? // Display name, set during onboarding
   role                String    @default("USER") // USER, CREATOR, ADMIN
   emailVerified       Boolean   @default(false)
@@ -25,7 +25,6 @@ model User {
   profile             Profile?
   sessions            Session[]
   tokens              VerificationToken[]
-  otpVerifications    OTPVerification[]
   loginAttempts       LoginAttempt[]
   companyMembers      CompanyMember[]
   jobsPosted          Job[]                @relation("RecruiterJobs")
@@ -60,21 +59,6 @@ model User {
   searchHistory         SearchHistoryEntry[]
   aiGenerations         AiGeneration[]
   notificationPrefs     NotificationPreference?
-}
-
-model OTPVerification {
-  id           String    @id @default(uuid())
-  email        String
-  userId       String?
-  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  otpHash      String // Hashed OTP – never store plaintext
-  expiresAt    DateTime
-  attemptCount Int       @default(0)
-  usedAt       DateTime? // Set when OTP is consumed
-  resendAt     DateTime? // Earliest time resend is allowed
-  createdAt    DateTime  @default(now())
-
-  @@index([email])
 }
 
 model LoginAttempt {

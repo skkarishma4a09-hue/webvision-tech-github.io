@@ -25,26 +25,6 @@ export class UserRepository {
     });
   }
 
-  /** Create a user via OTP (no password required) */
-  static async createOtpUser(email: string) {
-    const normalizedEmail = email.toLowerCase().trim();
-    return prisma.user.create({
-      data: {
-        email: normalizedEmail,
-        password: null,
-        role: 'USER',
-        emailVerified: true,
-        lastLoginAt: new Date(),
-        profile: {
-          create: {
-            name: normalizedEmail.split('@')[0], // default name from email
-          },
-        },
-      },
-      include: { profile: true },
-    });
-  }
-
   static async create(data: {
     name: string;
     email: string;

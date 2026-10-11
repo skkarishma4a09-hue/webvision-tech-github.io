@@ -5,6 +5,14 @@ import { prisma } from '../config/prisma';
 import { sendError } from '../utils/apiResponse';
 import type { Role } from '../repositories/userRepository';
 
+function isRole(value: unknown): value is Role {
+  return value === 'USER'
+    || value === 'CREATOR'
+    || value === 'JOB_SEEKER'
+    || value === 'RECRUITER'
+    || value === 'ADMIN';
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -30,52 +38,54 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
     return sendError(res, 'UNAUTHORIZED', 'Authentication token required', 401);
   }
 
-try {
-  // Verify JWT token; fall back to decode if verification fails (e.g., secret missing)
-  let decoded: any;
+  let decoded: jwt.JwtPayload & { userId?: string; email?: string; role?: unknown };
   try {
-    decoded = jwt.verify(token, env.JWT_SECRET) as any;
+    decoded = jwt.verify(token, env.JWT_SECRET) as jwt.JwtPayload & {
+      userId?: string;
+      email?: string;
+      role?: unknown;
+    };
   } catch {
-    // Fallback: decode without verification
-    decoded = jwt.decode(token) as any;
-    if (!decoded) {
-      return sendError(res, 'INVALID_TOKEN', 'The provided token is invalid or expired', 401);
-    }
+    return sendError(res, 'INVALID_TOKEN', 'The provided token is invalid or expired', 401);
   }
 
-  // Verify session state in database (optional)
-  const session = await prisma.session.findUnique({
-    where: { token },
-    include: { user: true },
-  });
+  if (
+    typeof decoded.userId !== 'string'
+    || typeof decoded.email !== 'string'
+    || !isRole(decoded.role)
+  ) {
+    return sendError(res, 'INVALID_TOKEN', 'The provided token is invalid or expired', 401);
+  }
 
-  if (session) {
-    if (session.isRevoked || new Date() > session.expiresAt) {
+  try {
+    const session = await prisma.session.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (
+      !session
+      || session.userId !== decoded.userId
+      || session.isRevoked
+      || session.expiresAt <= new Date()
+      || !isRole(session.user.role)
+    ) {
       return sendError(res, 'INVALID_SESSION', 'Session is expired or has been revoked', 401);
     }
     if (session.user.isLocked && session.user.lockUntil && session.user.lockUntil > new Date()) {
       return sendError(res, 'ACCOUNT_LOCKED', 'Your account has been temporarily locked due to failed attempts.', 403);
     }
+
     req.authUser = {
       id: session.userId,
       email: session.user.email,
       role: session.user.role,
       sessionId: session.id,
     };
-  } else {
-    // No session found – use JWT payload directly
-    req.authUser = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      sessionId: '',
-    };
+    return next();
+  } catch (error) {
+    return next(error);
   }
-
-  next();
-} catch (err) {
-  return sendError(res, 'INVALID_TOKEN', 'The provided token is invalid or expired', 401);
-}
 }
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => requireRole('ADMIN')(req, res, next);

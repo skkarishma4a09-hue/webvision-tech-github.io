@@ -35,7 +35,7 @@ export interface User {
   profile?: UserProfile;
 }
 
-// Auth views for the new OTP flow
+// Authentication modal visibility
 export type AuthView = 'login' | null;
 
 // Auth state machine
@@ -53,15 +53,11 @@ interface Ctx {
   user: User | null; setUser: (u: User | null) => void;
   profile: UserProfile | null;
   authLoading: boolean;
-  // OTP auth methods
-  sendOtp: (email: string) => Promise<{ success: boolean; resendAvailableAt?: Date }>;
-  verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; isNewUser: boolean }>;
-  resendOtp: (email: string) => Promise<{ success: boolean; resendAvailableAt?: Date }>;
   logoutUser: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   // Legacy compatibility
   loginUser: (email: string, pass: string) => Promise<any>;
-  registerUser: (name: string, email: string, pass: string, role?: string) => Promise<any>;
+  registerUser: (name: string, email: string, pass: string) => Promise<any>;
   updateProfileData: (data: any) => Promise<any>;
   addSkill: (name: string, years?: number, rating?: number) => Promise<any>;
   removeSkill: (id: string) => Promise<any>;
@@ -148,54 +144,24 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  // ─── OTP auth methods ──────────────────────────────────────────
-  const sendOtp = useCallback(async (email: string) => {
-    const res = await api.requestOtp(email);
-    return { success: res.data?.success ?? true };
-  }, []);
-
-  const verifyOtp = useCallback(async (email: string, otp: string) => {
-    const res = await api.verifyOtp(email, otp);
-    if (res.data?.authenticated && res.data?.user) {
-      const userData = res.data.user;
-      // Store token for Authorization header (backup for cookie-less envs)
-      if (res.data.token) setAuthToken(res.data.token);
-      setUser({
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        emailVerified: userData.emailVerified,
-        isNewUser: userData.isNewUser,
-      });
-      setAuthState('authenticated');
-      await refreshProfile();
-      const displayName = userData.name || userData.email.split('@')[0];
-      if (userData.isNewUser) {
-        addToast('success', `Welcome to Project Content AI Marketplace, ${displayName}! 🎉`);
-      } else {
-        addToast('success', `Welcome back, ${displayName}!`);
-      }
-      setAuthView(null);
-      return { success: true, isNewUser: userData.isNewUser };
-    }
-    return { success: false, isNewUser: false };
-  }, [addToast, refreshProfile]);
-
-  const resendOtp = useCallback(async (email: string) => {
-    const res = await api.resendOtp(email);
-    return { success: res.data?.success ?? true };
-  }, []);
-
   const logoutUser = useCallback(async () => {
+    let serverLogoutSucceeded = false;
     try {
       await api.logout();
-    } catch {}
+      serverLogoutSucceeded = true;
+    } catch (error) {
+      console.error('Server sign-out failed', error);
+    }
     setAuthToken(null);
     setUser(null);
     setProfile(null);
     setAuthState('unauthenticated');
-    addToast('info', 'Logged out successfully');
+    addToast(
+      serverLogoutSucceeded ? 'info' : 'warning',
+      serverLogoutSucceeded
+        ? 'Signed out successfully.'
+        : 'Signed out on this device, but the server could not confirm session revocation. Please retry when connected.'
+    );
   }, [addToast]);
 
   // ─── Legacy compatibility ──────────────────────────────────────
@@ -216,8 +182,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     return res;
   }, [addToast, refreshProfile]);
 
-  const registerUser = useCallback(async (name: string, email: string, pass: string, role = 'USER') => {
-    const res = await api.register({ name, email, password: pass, role });
+  const registerUser = useCallback(async (name: string, email: string, pass: string) => {
+    const res = await api.register({ name, email, password: pass });
     if (res.data?.token) {
       setAuthToken(res.data.token);
       setUser(res.data.user);
@@ -335,9 +301,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         setUser,
         profile,
         authLoading,
-        sendOtp,
-        verifyOtp,
-        resendOtp,
         logoutUser,
         refreshProfile,
         loginUser,

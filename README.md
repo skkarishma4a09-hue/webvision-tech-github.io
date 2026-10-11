@@ -175,19 +175,15 @@ All tasks for **Phase 1 — Backend Foundation** have been implemented and valid
 - ✅ Created frontend API client service (`src/services/api.ts`) and configured Vite dev proxy (`/api`).
 
 
-## 🔐 Authentication — OTP / SMTP Email Sign-In (no passwords)
+## Authentication — Email and Password
 
-The marketplace uses **passwordless email OTP sign-in** as the only auth flow:
-- Enter your email in the sign-in modal.
-- The server emails a 6-digit verification code (via SMTP).
-- Enter the code to finish sign-in (accounts are created automatically on first sign-in).
-- **No password login/register UI exists.** Legacy `/auth/login` & `/auth/register` REST routes remain on the server for backward compatibility and tests only.
-- **SMTP configuration:** set `SMTP_HOST/SMTP_PORT/SMTP_SECURE/SMTP_USER/SMTP_PASSWORD/SMTP_FROM` in `.env` to deliver real emails.
-- **Dev fallback:** if SMTP is not configured and `NODE_ENV != production`, the code is printed to the server console (never the API) so the flow is testable locally. In production, OTP is refused until SMTP is configured.
+Users can create an account with their name, email address, and password, then sign in with that email and password. Registration hashes passwords before storage and creates an authenticated session. Sign-out calls the API to revoke the session and clears the browser's local auth state.
+
+Email OTP sign-in has been removed. SMTP is not required for registration, sign-in, or sign-out. The separate admin SMTP diagnostic endpoints still use the optional `SMTP_*` settings; they are not part of user authentication. Password recovery by email is not currently available.
 
 ### Vercel deployment requirements
 
 - The Express API is exposed through `api/[...path].js`; `/api/*` requests must be routed to this function before the Vite SPA fallback.
-- OTP and account data use Prisma with PostgreSQL in production. The Vercel Supabase integration provides `POSTGRES_PRISMA_URL` (pooled runtime connection) and `POSTGRES_URL_NON_POOLING` (direct schema connection). Apply the production schema before using authentication (`npm run db:push:postgres`). Local development continues to use the SQLite schema in `prisma/schema.prisma`.
-- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, `ADMIN_API_KEY`, and the `SMTP_*` variables in Vercel's Production Environment Variables. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
+- Account and session data use Prisma with PostgreSQL in production. The Vercel Supabase integration provides `POSTGRES_PRISMA_URL` (pooled runtime connection) and `POSTGRES_URL_NON_POOLING` (direct schema connection). Apply the production schema before using authentication (`npm run db:push:postgres`). Local development continues to use the SQLite schema in `prisma/schema.prisma`.
+- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, and `ADMIN_API_KEY` in Vercel's Production Environment Variables. SMTP settings are only needed for admin SMTP diagnostics. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
 - The Prisma client is generated from `prisma/schema.postgres.prisma` during production builds. SQLite files are not persistent production storage.

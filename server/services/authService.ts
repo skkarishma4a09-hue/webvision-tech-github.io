@@ -6,26 +6,31 @@ import { SessionRepository } from '../repositories/sessionRepository';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/auditLogger';
 import { createVerificationToken, verifyToken, TokenType } from '../utils/email';
-import type { Role } from '../repositories/userRepository';
 
 export class AuthService {
-  static async register(data: { name: string; email: string; password: string; role?: Role }, meta?: { ip?: string; userAgent?: string }) {
-    const existing = await UserRepository.findByEmail(data.email);
+  static async register(data: { name: string; email: string; password: string }, meta?: { ip?: string; userAgent?: string }) {
+    const email = data.email.toLowerCase().trim();
+    const existing = await UserRepository.findByEmail(email);
     if (existing) {
-      await logAuditEvent({ action: 'REGISTER_FAILED', resource: 'User', result: 'FAILURE', metadata: { email: data.email, reason: 'Duplicate' }, ipAddress: meta?.ip, userAgent: meta?.userAgent });
+      await logAuditEvent({ action: 'REGISTER_FAILED', resource: 'User', result: 'FAILURE', metadata: { reason: 'Duplicate' }, ipAddress: meta?.ip, userAgent: meta?.userAgent });
       throw { code: 'DUPLICATE_ACCOUNT', message: 'An account with this email address already exists.' };
     }
 
     const hashedPassword = await hashPassword(data.password);
-    const user = await UserRepository.create({
-      name: data.name,
-      email: data.email,
-      password: hashedPassword,
-      role: data.role,
-    });
-
-    // Create email verification token
-    const verificationTokenRecord = await createVerificationToken(user.id, TokenType.EMAIL_VERIFICATION);
+    let user;
+    try {
+      user = await UserRepository.create({
+        name: data.name.trim(),
+        email,
+        password: hashedPassword,
+        role: 'USER',
+      });
+    } catch (error) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        throw { code: 'DUPLICATE_ACCOUNT', message: 'An account with this email address already exists.' };
+      }
+      throw error;
+    }
 
     // Create active session
     const accessToken = jwt.sign({ userId: user.id, email: user.email, role: user.role, jti: crypto.randomUUID() }, env.JWT_SECRET, { expiresIn: '7d' });
@@ -44,19 +49,18 @@ export class AuthService {
     return {
       user: {
         id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
         emailVerified: user.emailVerified,
         profile: user.profile,
       },
       token: accessToken,
-      refreshToken,
-      verificationToken: verificationTokenRecord.token,
     };
   }
 
   static async login(data: { email: string; password: string }, meta?: { ip?: string; userAgent?: string }) {
-    const user = await UserRepository.findByEmail(data.email);
+    const user = await UserRepository.findByEmail(data.email.toLowerCase().trim());
 
     if (!user) {
       await logAuditEvent({ action: 'LOGIN_FAILED', resource: 'User', result: 'FAILURE', metadata: { email: data.email, reason: 'Invalid Email' }, ipAddress: meta?.ip, userAgent: meta?.userAgent });
@@ -68,7 +72,9 @@ export class AuthService {
       throw { code: 'ACCOUNT_LOCKED', message: 'Account is temporarily locked due to multiple failed login attempts. Please try again later.' };
     }
 
-    const isMatch = await verifyPassword(data.password, user.password);
+    const isMatch = user.password
+      ? await verifyPassword(data.password, user.password)
+      : false;
     if (!isMatch) {
       await UserRepository.recordFailedLogin(user.id, user.failedLoginAttempts);
       await logAuditEvent({ actorId: user.id, action: 'LOGIN_FAILED', resource: 'User', result: 'FAILURE', metadata: { reason: 'Invalid Password' }, ipAddress: meta?.ip, userAgent: meta?.userAgent });
@@ -95,13 +101,13 @@ export class AuthService {
     return {
       user: {
         id: user.id,
+        name: user.name,
         email: user.email,
         role: user.role,
         emailVerified: user.emailVerified,
         profile: user.profile,
       },
       token: accessToken,
-      refreshToken,
     };
   }
 

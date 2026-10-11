@@ -22,14 +22,7 @@ export class AdminController {
   static async smtpStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const info = getSmtpStatusInfo();
-      return sendSuccess(res, {
-        smtp: info,
-        otpConfig: {
-          expirySeconds: env.OTP_EXPIRY_SECONDS,
-          resendCooldownSeconds: env.OTP_RESEND_COOLDOWN_SECONDS,
-          maxAttempts: env.OTP_MAX_ATTEMPTS,
-        },
-      });
+      return sendSuccess(res, { smtp: info });
     } catch (err) {
       next(err);
     }

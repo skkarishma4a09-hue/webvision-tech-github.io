@@ -25,7 +25,7 @@ export class AuthController {
       return sendSuccess(res, result, 201, 'Registration successful');
     } catch (err: any) {
       if (err.code) {
-        return sendError(res, err.code, err.message, 400);
+        return sendError(res, err.code, err.message, err.code === 'DUPLICATE_ACCOUNT' ? 409 : 400);
       }
       next(err);
     }
@@ -67,7 +67,12 @@ export class AuthController {
         await AuthService.logout(token, req.authUser?.id, allSessions, meta);
       }
 
-      res.clearCookie('accessToken');
+      res.clearCookie('accessToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
       return sendSuccess(res, { message: 'Logged out successfully' });
     } catch (err) {
       next(err);

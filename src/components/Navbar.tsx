@@ -17,7 +17,7 @@ const currencies = ['USD','EUR','GBP','JPY','CAD','AUD','INR','SGD'];
 
 export default function Navbar() {
   const { theme, toggleTheme, currency, setCurrency, setCmdOpen,
-    authView, setAuthView, user, setUser, addToast, notifCount, setNotifCount } = useApp();
+    authView, setAuthView, user, logoutUser, addToast, notifCount, setNotifCount } = useApp();
   const loc = useLocation();
   const [mob, setMob] = useState(false);
   const [srch, setSrch] = useState(false);
@@ -26,7 +26,20 @@ export default function Navbar() {
   const [profDD, setProfDD] = useState(false);
   const [notifDD, setNotifDD] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const srchRef = useRef<HTMLDivElement>(null);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    setProfDD(false);
+    setMob(false);
+    try {
+      await logoutUser();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 20);
@@ -54,8 +67,6 @@ export default function Navbar() {
     ...creators.filter(c=>c.name.toLowerCase().includes(srchQ.toLowerCase())).slice(0,3).map(c=>({ type:'creator', label:c.name, sub:c.username })),
     ...services.filter(s=>s.title.toLowerCase().includes(srchQ.toLowerCase())).slice(0,3).map(s=>({ type:'service', label:s.title, sub:s.category })),
   ] : [];
-
-  // Fake demo sign-in removed - authentication is OTP-only.
 
   const navBg = scrolled ? 'rgba(5,5,8,.95)' : 'transparent';
   const navBorder = scrolled ? '1px solid var(--border)' : '1px solid transparent';
@@ -233,7 +244,7 @@ export default function Navbar() {
 
                     <Link to="/creator-dashboard" className="dd-item" onClick={()=>setProfDD(false)}><User size={13}/> Creator Dashboard</Link>
                     <div className="divider" style={{ margin:'4px 0' }}/>
-                    <button className="dd-item danger" onClick={()=>{setUser(null);setProfDD(false);addToast('info','Signed out');}}><LogOut size={13}/> Sign Out</button>
+                    <button className="dd-item danger" onClick={handleSignOut} disabled={signingOut}><LogOut size={13}/> {signingOut ? 'Signing out…' : 'Sign Out'}</button>
                   </div>
                 )}
               </div>
@@ -267,7 +278,7 @@ export default function Navbar() {
                 <button className="btn btn-primary btn-sm" style={{ flex:1 }} onClick={()=>{setAuthView('login');setMob(false);}}>Get started</button>
               </div>
             ) : (
-              <button className="btn btn-secondary btn-sm" style={{ width:'100%' }} onClick={()=>{setUser(null);setMob(false);addToast('info','Signed out');}}><LogOut size={13}/> Sign Out</button>
+              <button className="btn btn-secondary btn-sm" style={{ width:'100%' }} onClick={handleSignOut} disabled={signingOut}><LogOut size={13}/> {signingOut ? 'Signing out…' : 'Sign Out'}</button>
             )}
           </div>
         )}

@@ -167,7 +167,7 @@ export async function seedMarketplace() {
   console.log('✅ Marketplace seeded.');
   console.log('- Creators: aria@synapse.io, marcus@synapse.io, sofia@synapse.io, kenji@synapse.io, priya@synapse.io, emma@synapse.io');
   console.log('- Buyers: buyer@synapse.io, client@synapse.io');
-  console.log('- OTP sign-in: enter any seeded email (code prints to console in dev when SMTP is unset)');
+  console.log('- Sign in with the seeded email and password configured by the seed script.');
 }
 
 if (process.argv[1]?.includes('seedMarketplace')) {

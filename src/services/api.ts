@@ -48,24 +48,14 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 export const api = {
-  // ─── OTP Authentication (primary) ─────────────────────────
-  requestOtp: (email: string) =>
-    request<any>('/auth/request-otp', { method: 'POST', body: JSON.stringify({ email }) }),
-  verifyOtp: (email: string, otp: string) =>
-    request<any>('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email, otp }) }),
-  resendOtp: (email: string) =>
-    request<any>('/auth/resend-otp', { method: 'POST', body: JSON.stringify({ email }) }),
-
   // ─── Session ──────────────────────────────────────────────
   getCurrentUser: () => request<any>('/auth/me'),
   logout: () => request<any>('/auth/logout', { method: 'POST' }),
   logoutAll: () => request<any>('/auth/logout', { method: 'POST', body: JSON.stringify({ allSessions: true }) }),
 
-  // ─── Legacy (kept for compatibility) ──────────────────────
+  // ─── Password authentication ──────────────────────────────
   register: (data: any) => request<any>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data: any) => request<any>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
-  forgotPassword: (email: string) => request<any>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
-  resetPassword: (data: any) => request<any>('/auth/reset-password', { method: 'POST', body: JSON.stringify(data) }),
 
   // ─── Profile & Sub-sections ───────────────────────────────
   getProfile: () => request<any>('/profile'),
