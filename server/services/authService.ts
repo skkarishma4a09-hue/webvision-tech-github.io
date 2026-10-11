@@ -6,6 +6,9 @@ import { SessionRepository } from '../repositories/sessionRepository';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { logAuditEvent } from '../utils/auditLogger';
 import { createVerificationToken, verifyToken, TokenType } from '../utils/email';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleOAuthClient = new OAuth2Client();
 
 export class AuthService {
   static async register(data: { name: string; email: string; password: string }, meta?: { ip?: string; userAgent?: string }) {
@@ -97,6 +100,89 @@ export class AuthService {
     });
 
     await logAuditEvent({ actorId: user.id, action: 'LOGIN', resource: 'User', result: 'SUCCESS', ipAddress: meta?.ip, userAgent: meta?.userAgent });
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        profile: user.profile,
+      },
+      token: accessToken,
+    };
+  }
+
+  static async loginWithGoogle(credential: string, meta?: { ip?: string; userAgent?: string }) {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw { code: 'GOOGLE_NOT_CONFIGURED', message: 'Google sign-in is not configured.' };
+    }
+
+    let payload;
+    try {
+      const ticket = await googleOAuthClient.verifyIdToken({
+        idToken: credential,
+        audience: env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
+    } catch {
+      throw { code: 'INVALID_GOOGLE_CREDENTIAL', message: 'Google sign-in could not be verified. Please try again.' };
+    }
+
+    if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+      throw { code: 'INVALID_GOOGLE_CREDENTIAL', message: 'Google sign-in requires a verified Google email.' };
+    }
+
+    const email = payload.email.toLowerCase().trim();
+    let user = await UserRepository.findByEmail(email);
+    if (!user) {
+      try {
+        user = await UserRepository.create({
+          name: payload.name?.trim() || email.split('@')[0],
+          email,
+          emailVerified: true,
+        });
+      } catch (error) {
+        if (!(error && typeof error === 'object' && 'code' in error && error.code === 'P2002')) {
+          throw error;
+        }
+        user = await UserRepository.findByEmail(email);
+        if (!user) throw error;
+      }
+    }
+
+    if (user.isLocked && user.lockUntil && user.lockUntil > new Date()) {
+      throw { code: 'ACCOUNT_LOCKED', message: 'Account is temporarily locked. Please try again later.' };
+    }
+
+    if (!user.emailVerified) {
+      await UserRepository.markEmailVerified(user.id);
+      user = await UserRepository.findByEmail(email) ?? user;
+    }
+
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role, jti: crypto.randomUUID() },
+      env.JWT_SECRET,
+      { expiresIn: '7d' },
+    );
+    const refreshToken = crypto.randomBytes(40).toString('hex');
+
+    await SessionRepository.createSession({
+      userId: user.id,
+      token: accessToken,
+      refreshToken,
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
+    await logAuditEvent({
+      actorId: user.id,
+      action: 'GOOGLE_LOGIN',
+      resource: 'User',
+      result: 'SUCCESS',
+      ipAddress: meta?.ip,
+      userAgent: meta?.userAgent,
+    });
 
     return {
       user: {

@@ -12,5 +12,6 @@ router.post('/logout', AuthController.logout);
 // ─── Password authentication ──────────────────────────────────
 router.post('/register', authRateLimiter, AuthController.register);
 router.post('/login', authRateLimiter, AuthController.login);
+router.post('/google', authRateLimiter, AuthController.googleLogin);
 
 export default router;

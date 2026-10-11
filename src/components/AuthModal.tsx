@@ -1,8 +1,23 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, Eye, EyeOff, Lock, Mail, Shield, Sparkles, X, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 type AuthMode = 'login' | 'register';
+
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+interface GoogleIdentityApi {
+  initialize: (options: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+  renderButton: (element: HTMLElement, options: Record<string, string | number>) => void;
+}
+
+declare global {
+  interface Window {
+    google?: { accounts: { id: GoogleIdentityApi } };
+  }
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -25,7 +40,9 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function AuthModal() {
-  const { authView, setAuthView, loginUser, registerUser } = useApp();
+  const { authView, setAuthView, loginUser, loginWithGoogle, registerUser } = useApp();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   const [mode, setMode] = useState<AuthMode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -47,6 +64,59 @@ export default function AuthModal() {
   }, [authView]);
 
   const close = useCallback(() => setAuthView(null), [setAuthView]);
+
+  useEffect(() => {
+    if (!authView || !googleClientId || !googleButtonRef.current) return;
+    let cancelled = false;
+
+    const renderGoogleButton = () => {
+      if (cancelled || !window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (response) => {
+          if (!response.credential) {
+            setError('Google did not return a sign-in credential. Please try again.');
+            return;
+          }
+          setLoading(true);
+          setError('');
+          void loginWithGoogle(response.credential)
+            .catch((cause) => setError(cause instanceof Error ? cause.message : 'Google sign-in failed. Please try again.'))
+            .finally(() => setLoading(false));
+        },
+      });
+      googleButtonRef.current.replaceChildren();
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'rectangular',
+        width: Math.min(360, googleButtonRef.current.clientWidth),
+      });
+    };
+
+    const scriptId = 'google-identity-services';
+    const existingScript = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (window.google) {
+      renderGoogleButton();
+    } else if (existingScript) {
+      existingScript.addEventListener('load', renderGoogleButton);
+    } else {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.addEventListener('load', renderGoogleButton);
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      cancelled = true;
+      existingScript?.removeEventListener('load', renderGoogleButton);
+    };
+  }, [authView, googleClientId, loginWithGoogle]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -199,6 +269,26 @@ export default function AuthModal() {
               {error}
             </div>
           )}
+
+          <div style={{ marginBottom: 20 }}>
+            {googleClientId ? (
+              <div ref={googleButtonRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
+            ) : (
+              <>
+                <button type="button" disabled style={{ width: '100%', padding: '12px 16px', background: '#fff', border: '1px solid #dadce0', borderRadius: 8, color: '#3c4043', fontSize: 14, fontWeight: 600, opacity: 0.7 }}>
+                  Continue with Google
+                </button>
+                <p role="status" style={{ margin: '8px 0 0', textAlign: 'center', color: 'rgba(241,245,249,0.45)', fontSize: 11 }}>
+                  Google sign-in is unavailable until the app is configured with a Google OAuth client ID.
+                </p>
+              </>
+            )}
+          </div>
+          <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, color: 'rgba(241,245,249,0.35)', fontSize: 11 }}>
+            <span style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.1)' }} />
+            OR CONTINUE WITH EMAIL
+            <span style={{ height: 1, flex: 1, background: 'rgba(255,255,255,0.1)' }} />
+          </div>
 
           <form onSubmit={handleSubmit}>
             {mode === 'register' && (

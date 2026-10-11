@@ -38,6 +38,7 @@ export const env = {
 
   // Auth session
   AUTH_SESSION_SECRET: secret('AUTH_SESSION_SECRET', 'synapse_session_secret_2026!'),
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
 
   // AI Studio provider configuration (server-side only)
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',

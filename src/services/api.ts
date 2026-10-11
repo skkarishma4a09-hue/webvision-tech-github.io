@@ -56,6 +56,7 @@ export const api = {
   // ─── Password authentication ──────────────────────────────
   register: (data: any) => request<any>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data: any) => request<any>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  loginWithGoogle: (credential: string) => request<any>('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) }),
 
   // ─── Profile & Sub-sections ───────────────────────────────
   getProfile: () => request<any>('/profile'),

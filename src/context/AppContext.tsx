@@ -57,6 +57,7 @@ interface Ctx {
   refreshProfile: () => Promise<void>;
   // Legacy compatibility
   loginUser: (email: string, pass: string) => Promise<any>;
+  loginWithGoogle: (credential: string) => Promise<any>;
   registerUser: (name: string, email: string, pass: string) => Promise<any>;
   updateProfileData: (data: any) => Promise<any>;
   addSkill: (name: string, years?: number, rating?: number) => Promise<any>;
@@ -177,6 +178,23 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         await refreshProfile();
       }
       addToast('success', `Welcome back, ${res.data.user.name || 'User'}!`);
+      setAuthView(null);
+    }
+    return res;
+  }, [addToast, refreshProfile]);
+
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    const res = await api.loginWithGoogle(credential);
+    if (res.data?.token) {
+      setAuthToken(res.data.token);
+      setUser(res.data.user);
+      setAuthState('authenticated');
+      if (res.data.user.profile) {
+        setProfile(res.data.user.profile);
+      } else {
+        await refreshProfile();
+      }
+      addToast('success', `Welcome, ${res.data.user.name || 'User'}!`);
       setAuthView(null);
     }
     return res;
@@ -304,6 +322,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         logoutUser,
         refreshProfile,
         loginUser,
+        loginWithGoogle,
         registerUser,
         updateProfileData,
         addSkill,

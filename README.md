@@ -181,9 +181,11 @@ Users can create an account with their name, email address, and password, then s
 
 Email OTP sign-in has been removed. SMTP is not required for registration, sign-in, or sign-out. The separate admin SMTP diagnostic endpoints still use the optional `SMTP_*` settings; they are not part of user authentication. Password recovery by email is not currently available.
 
+Google Sign-In uses Google Identity Services in the browser and verifies the signed ID token on the server. Configure the same OAuth 2.0 Web client ID as `VITE_GOOGLE_CLIENT_ID` (frontend build environment) and `GOOGLE_CLIENT_ID` (server environment). In Google Cloud Console, add the deployed site origin and local development origin as authorized JavaScript origins. Until configured, the Google option is shown as unavailable and no simulated sign-in is allowed.
+
 ### Vercel deployment requirements
 
 - The Express API is exposed through `api/[...path].js`; `/api/*` requests must be routed to this function before the Vite SPA fallback.
 - Account and session data use Prisma with PostgreSQL in production. The Vercel Supabase integration provides `POSTGRES_PRISMA_URL` (pooled runtime connection) and `POSTGRES_URL_NON_POOLING` (direct schema connection). Apply the production schema before using authentication (`npm run db:push:postgres`). Local development continues to use the SQLite schema in `prisma/schema.prisma`.
-- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, and `ADMIN_API_KEY` in Vercel's Production Environment Variables. SMTP settings are only needed for admin SMTP diagnostics. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
+- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, `ADMIN_API_KEY`, and the Google client ID in Vercel's Production Environment Variables. Set `VITE_GOOGLE_CLIENT_ID` for the frontend build and `GOOGLE_CLIENT_ID` for the API. SMTP settings are only needed for admin SMTP diagnostics. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
 - The Prisma client is generated from `prisma/schema.postgres.prisma` during production builds. SQLite files are not persistent production storage.

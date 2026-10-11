@@ -30,6 +30,7 @@ export class UserRepository {
     email: string;
     password?: string;
     role?: Role;
+    emailVerified?: boolean;
   }) {
     const email = data.email.toLowerCase();
     const role = data.role || Role.USER;
@@ -40,6 +41,7 @@ export class UserRepository {
         password: data.password ?? null,
         name: data.name,
         role,
+        emailVerified: data.emailVerified ?? false,
         profile: {
           create: {
             name: data.name,

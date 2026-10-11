@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/authService';
 import { sendSuccess, sendError } from '../utils/apiResponse';
-import { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../validators/authValidator';
+import { registerSchema, loginSchema, googleLoginSchema, forgotPasswordSchema, resetPasswordSchema } from '../validators/authValidator';
 
 export class AuthController {
   static async register(req: Request, res: Response, next: NextFunction) {
@@ -54,6 +54,37 @@ export class AuthController {
         return sendError(res, err.code, err.message, err.code === 'ACCOUNT_LOCKED' ? 403 : 401);
       }
       next(err);
+    }
+  }
+
+  static async googleLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const parsed = googleLoginSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return sendError(res, 'VALIDATION_ERROR', 'Invalid Google sign-in credential', 400, parsed.error.format());
+      }
+
+      const meta = { ip: req.ip, userAgent: req.headers['user-agent'] };
+      const result = await AuthService.loginWithGoogle(parsed.data.credential, meta);
+
+      res.cookie('accessToken', result.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' || process.env.VERCEL === '1',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      return sendSuccess(res, result, 200, 'Google sign-in successful');
+    } catch (err: any) {
+      if (err.code) {
+        const status = err.code === 'GOOGLE_NOT_CONFIGURED' ? 503
+          : err.code === 'ACCOUNT_LOCKED' ? 403
+            : err.code === 'INVALID_GOOGLE_CREDENTIAL' ? 401
+              : 400;
+        return sendError(res, err.code, err.message, status);
+      }
+      return next(err);
     }
   }
 
