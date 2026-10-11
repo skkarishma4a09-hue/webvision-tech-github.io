@@ -2,5 +2,6 @@
 .env.*
 !.env.example
 .vercel
+/api/_server.cjs
 node_modules
 dist

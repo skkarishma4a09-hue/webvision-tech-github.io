@@ -185,7 +185,7 @@ Google Sign-In uses Google Identity Services in the browser and verifies the sig
 
 ### Vercel deployment requirements
 
-- The Express API is exposed through `api/[...path].js`; `/api/*` requests must be routed to this function before the Vite SPA fallback.
+- The Express API is exposed through `api/[...path].ts`. The production build bundles the server into the generated `api/_server.cjs` helper, routes `/api/*` to the function, and sends other paths to the Vite SPA.
 - Account and session data use Prisma with PostgreSQL in production. The Vercel Supabase integration provides `POSTGRES_PRISMA_URL` (pooled runtime connection) and `POSTGRES_URL_NON_POOLING` (direct schema connection). Apply the production schema before using authentication (`npm run db:push:postgres`). Local development continues to use the SQLite schema in `prisma/schema.prisma`.
-- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, `ADMIN_API_KEY`, and the Google client ID in Vercel's Production Environment Variables. Set `VITE_GOOGLE_CLIENT_ID` for the frontend build and `GOOGLE_CLIENT_ID` for the API. SMTP settings are only needed for admin SMTP diagnostics. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
+- Configure `JWT_SECRET`, `AUTH_SESSION_SECRET`, `ADMIN_API_KEY`, and the Google client ID in Vercel's Production Environment Variables. Set `VITE_GOOGLE_CLIENT_ID` for the frontend build and `GOOGLE_CLIENT_ID` for the API. `CORS_ORIGIN` accepts a comma-separated origin allowlist and includes the deployed site origin. SMTP settings are only needed for admin SMTP diagnostics. Use unique, randomly generated secrets; never commit `.env` or paste secret values into chat.
 - The Prisma client is generated from `prisma/schema.postgres.prisma` during production builds. SQLite files are not persistent production storage.

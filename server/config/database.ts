@@ -1,5 +1,4 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import type { Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
 import { env } from './env';
@@ -9,6 +8,10 @@ let dbInstance: Database | null = null;
 export async function getDb(): Promise<Database> {
   if (dbInstance) return dbInstance;
 
+  const [{ default: sqlite3 }, { open }] = await Promise.all([
+    import('sqlite3'),
+    import('sqlite'),
+  ]);
   const dbPath = path.resolve(process.cwd(), env.DATABASE_PATH);
   const dbDir = path.dirname(dbPath);
 
